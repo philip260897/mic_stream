@@ -1,13 +1,17 @@
 package com.code.aaron.micstream;
 
 import java.lang.Math;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
+import android.media.MicrophoneInfo;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -91,6 +95,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
     }
 
     private final Runnable runnable = new Runnable() {
+        @TargetApi(Build.VERSION_CODES.P)
         @Override
         public void run() {
             isRecording = true;
@@ -101,16 +106,35 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             // Wait until recorder is initialised
             while (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
 
+            List<MicrophoneInfo> microphoneInfoList = new ArrayList<>();
+            try {
+                microphoneInfoList = recorder.getActiveMicrophones();
+            }catch(Exception ex){ex.printStackTrace(); System.out.println("active mic error");}
+
+            for(MicrophoneInfo info : microphoneInfoList) {
+                System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
+            }
+
             // Repeatedly push audio samples to stream
             while (record) {
+
+                try {
+                    microphoneInfoList = recorder.getActiveMicrophones();
+                }catch(Exception ex){ ex.printStackTrace(); System.out.println("active mic error"); }
+
+                for(MicrophoneInfo info : microphoneInfoList) {
+                    System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
+                }
 
                 // Read audio data into new byte array
                 byte[] data = new byte[BUFFER_SIZE];
                 recorder.read(data, 0, BUFFER_SIZE);
 
+
                 // push data into stream
                 try {
                     eventSink.success(data);
+
                 } catch (IllegalArgumentException e) {
                     System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
                     eventSink.error("-1", "Invalid Data", e);
