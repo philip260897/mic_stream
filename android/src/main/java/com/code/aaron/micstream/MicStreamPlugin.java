@@ -118,6 +118,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             // Repeatedly push audio samples to stream
             while (record) {
 
+
                 try {
                     microphoneInfoList = recorder.getActiveMicrophones();
                 }catch(Exception ex){ ex.printStackTrace(); System.out.println("active mic error"); }
