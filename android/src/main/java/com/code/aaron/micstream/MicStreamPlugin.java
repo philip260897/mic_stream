@@ -99,33 +99,38 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         @Override
         public void run() {
             isRecording = true;
+            System.out.println("[Mic|DEBUG] Recorder started!");
             
             actualSampleRate = recorder.getSampleRate();
             actualBitDepth = (recorder.getAudioFormat() == AudioFormat.ENCODING_PCM_8BIT ? 8 : 16);
 
+            System.out.println("[Mic|DEBUG] Reading recorder state!");
+
             // Wait until recorder is initialised
             while (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
 
-            List<MicrophoneInfo> microphoneInfoList = new ArrayList<>();
+            System.out.println("[Mic|DEBUG] Recorder initialized!");
+
+            /*List<MicrophoneInfo> microphoneInfoList = new ArrayList<>();
             try {
                 microphoneInfoList = recorder.getActiveMicrophones();
             }catch(Exception ex){ex.printStackTrace(); System.out.println("active mic error");}
 
             for(MicrophoneInfo info : microphoneInfoList) {
                 System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
-            }
+            }*/
 
             // Repeatedly push audio samples to stream
             while (record) {
 
 
-                try {
+                /*try {
                     microphoneInfoList = recorder.getActiveMicrophones();
                 }catch(Exception ex){ ex.printStackTrace(); System.out.println("active mic error"); }
 
                 for(MicrophoneInfo info : microphoneInfoList) {
                     System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
-                }
+                }*/
 
                 // Read audio data into new byte array
                 byte[] data = new byte[BUFFER_SIZE];
@@ -142,6 +147,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                 }
             }
             isRecording = false;
+            System.out.println("[Mic|DEBUG] Recorder shutdown!");
         }
     };
 
@@ -190,6 +196,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
     @Override
     public void onListen(Object args, final EventChannel.EventSink eventSink) {
+        System.out.println("[Listen|DEBUG] on Listen! recording="+isRecording);
         if (isRecording) return;
 
         ArrayList<Integer> config = (ArrayList<Integer>) args;
@@ -225,11 +232,13 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             eventSink.error("-1", "PlatformError", null);
             return;
         }
-        
+
+        System.out.println("[Listen|DEBUG] Recorder starting");
         recorder.startRecording();
 
         // Start runnable
         record = true;
+        System.out.println("[Listen|DEBUG] Thread created");
         new Thread(runnable).start();
     }
 
@@ -237,11 +246,14 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
     public void onCancel(Object o) {
         // Stop runnable
         record = false;
+        System.out.println("[Cancel|DEBUG] cancelling recorder");
         if(recorder != null) {
             // Stop and reset audio recorder
+            System.out.println("[Cancel|DEBUG] disposing recorder");
             recorder.stop();
             recorder.release();
             recorder = null;
+            System.out.println("[Cancel|DEBUG] recorder cancelled");
         }
     }
 }
