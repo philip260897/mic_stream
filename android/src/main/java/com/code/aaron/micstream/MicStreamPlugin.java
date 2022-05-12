@@ -100,14 +100,9 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         public void run() {
             isRecording = true;
             System.out.println("[Mic|DEBUG] Recorder started!");
-            
-            actualSampleRate = recorder.getSampleRate();
-            actualBitDepth = (recorder.getAudioFormat() == AudioFormat.ENCODING_PCM_8BIT ? 8 : 16);
-
-            System.out.println("[Mic|DEBUG] Reading recorder state!");
 
             // Wait until recorder is initialised
-            while (recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
+            while (record && recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
 
             System.out.println("[Mic|DEBUG] Recorder initialized!");
 
@@ -133,17 +128,17 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                 }*/
 
                 // Read audio data into new byte array
-                byte[] data = new byte[BUFFER_SIZE];
-                recorder.read(data, 0, BUFFER_SIZE);
+                synchronized (recordingLock) {
+                    byte[] data = new byte[BUFFER_SIZE];
+                    recorder.read(data, 0, BUFFER_SIZE);
 
-
-                // push data into stream
-                try {
-                    eventSink.success(data);
-
-                } catch (IllegalArgumentException e) {
-                    System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
-                    eventSink.error("-1", "Invalid Data", e);
+                    // push data into stream
+                    try {
+                        eventSink.success(data);
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
+                        eventSink.error("-1", "Invalid Data", e);
+                    }
                 }
             }
             isRecording = false;
@@ -236,12 +231,17 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         System.out.println("[Listen|DEBUG] Recorder starting");
         recorder.startRecording();
 
+        System.out.println("[Listen|DEBUG] Getting actual values");
+        actualSampleRate = recorder.getSampleRate();
+        actualBitDepth = (recorder.getAudioFormat() == AudioFormat.ENCODING_PCM_8BIT ? 8 : 16);
+
         // Start runnable
         record = true;
         System.out.println("[Listen|DEBUG] Thread created");
         new Thread(runnable).start();
     }
 
+    Object recordingLock = new Object();
     @Override
     public void onCancel(Object o) {
         // Stop runnable
@@ -250,9 +250,11 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         if(recorder != null) {
             // Stop and reset audio recorder
             System.out.println("[Cancel|DEBUG] disposing recorder");
-            recorder.stop();
-            recorder.release();
-            recorder = null;
+            synchronized (recordingLock) {
+                recorder.stop();
+                recorder.release();
+                recorder = null;
+            }
             System.out.println("[Cancel|DEBUG] recorder cancelled");
         }
     }
