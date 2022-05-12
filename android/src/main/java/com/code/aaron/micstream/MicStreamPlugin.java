@@ -1,17 +1,13 @@
 package com.code.aaron.micstream;
 
 import java.lang.Math;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import android.annotation.TargetApi;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
-import android.media.MicrophoneInfo;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -62,6 +58,8 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
     // Audio recorder + initial values
     private static volatile AudioRecord recorder;
+    //a 'lock' object used to synchronize recorder access between threads
+    private static Object recorderLock = new Object();
 
     private int AUDIO_SOURCE = MediaRecorder.AudioSource.DEFAULT;
     private int SAMPLE_RATE = 16000;
@@ -95,56 +93,37 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
     }
 
     private final Runnable runnable = new Runnable() {
-        @TargetApi(Build.VERSION_CODES.P)
         @Override
         public void run() {
             isRecording = true;
-            System.out.println("[Mic|DEBUG] Recorder started!");
 
-            synchronized (recordingLock) {
+            //lock access to recorder, so onCancel can't take it away while we are waiting for the recorder to get into the correct state
+            synchronized (recorderLock) {
                 // Wait until recorder is initialised
                 while (record && recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
+                //while stuck in the while loop, check 'record' in case onCancel received an event on the other thread, disabling this recording process
             }
-
-            System.out.println("[Mic|DEBUG] Recorder initialized!");
-
-            /*List<MicrophoneInfo> microphoneInfoList = new ArrayList<>();
-            try {
-                microphoneInfoList = recorder.getActiveMicrophones();
-            }catch(Exception ex){ex.printStackTrace(); System.out.println("active mic error");}
-
-            for(MicrophoneInfo info : microphoneInfoList) {
-                System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
-            }*/
-
             // Repeatedly push audio samples to stream
             while (record) {
 
+                //lock access to recorder again, check if the recorder is not null (onCancel could have been executed and made it null)
+                synchronized (recorderLock) {
+                    if(recorder != null) {
+                        // Read audio data into new byte array
+                        byte[] data = new byte[BUFFER_SIZE];
+                        recorder.read(data, 0, BUFFER_SIZE);
 
-                /*try {
-                    microphoneInfoList = recorder.getActiveMicrophones();
-                }catch(Exception ex){ ex.printStackTrace(); System.out.println("active mic error"); }
-
-                for(MicrophoneInfo info : microphoneInfoList) {
-                    System.out.println("MicrophoneInfo[address="+info.getAddress()+"; description="+info.getDescription()+"; dir="+info.getDirectionality()+"; "+info.getSensitivity()+"]");
-                }*/
-
-                // Read audio data into new byte array
-                synchronized (recordingLock) {
-                    byte[] data = new byte[BUFFER_SIZE];
-                    recorder.read(data, 0, BUFFER_SIZE);
-
-                    // push data into stream
-                    try {
-                        eventSink.success(data);
-                    } catch (IllegalArgumentException e) {
-                        System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
-                        eventSink.error("-1", "Invalid Data", e);
+                        // push data into stream
+                        try {
+                            eventSink.success(data);
+                        } catch (IllegalArgumentException e) {
+                            System.out.println("mic_stream: " + Arrays.hashCode(data) + " is not valid!");
+                            eventSink.error("-1", "Invalid Data", e);
+                        }
                     }
                 }
             }
             isRecording = false;
-            System.out.println("[Mic|DEBUG] Recorder shutdown!");
         }
     };
 
@@ -193,7 +172,6 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
     @Override
     public void onListen(Object args, final EventChannel.EventSink eventSink) {
-        System.out.println("[Listen|DEBUG] on Listen! recording="+isRecording);
         if (isRecording) return;
 
         ArrayList<Integer> config = (ArrayList<Integer>) args;
@@ -229,35 +207,27 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             eventSink.error("-1", "PlatformError", null);
             return;
         }
-
-        System.out.println("[Listen|DEBUG] Recorder starting");
+        
         recorder.startRecording();
 
-        System.out.println("[Listen|DEBUG] Getting actual values");
+        //no need for this to be in the async thread => only creates problems
         actualSampleRate = recorder.getSampleRate();
         actualBitDepth = (recorder.getAudioFormat() == AudioFormat.ENCODING_PCM_8BIT ? 8 : 16);
 
         // Start runnable
         record = true;
-        System.out.println("[Listen|DEBUG] Thread created");
         new Thread(runnable).start();
     }
 
-    Object recordingLock = new Object();
     @Override
     public void onCancel(Object o) {
         // Stop runnable
         record = false;
-        System.out.println("[Cancel|DEBUG] cancelling recorder");
         if(recorder != null) {
             // Stop and reset audio recorder
-            System.out.println("[Cancel|DEBUG] disposing recorder");
-            synchronized (recordingLock) {
-                recorder.stop();
-                recorder.release();
-                recorder = null;
-            }
-            System.out.println("[Cancel|DEBUG] recorder cancelled");
+            recorder.stop();
+            recorder.release();
+            recorder = null;
         }
     }
 }
