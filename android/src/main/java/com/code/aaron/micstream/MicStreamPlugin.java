@@ -219,6 +219,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         new Thread(runnable).start();
     }
 
+
     @Override
     public void onCancel(Object o) {
         // Stop runnable
