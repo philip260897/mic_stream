@@ -101,8 +101,10 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
             isRecording = true;
             System.out.println("[Mic|DEBUG] Recorder started!");
 
-            // Wait until recorder is initialised
-            while (record && recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
+            synchronized (recordingLock) {
+                // Wait until recorder is initialised
+                while (record && recorder.getRecordingState() != AudioRecord.RECORDSTATE_RECORDING);
+            }
 
             System.out.println("[Mic|DEBUG] Recorder initialized!");
 
