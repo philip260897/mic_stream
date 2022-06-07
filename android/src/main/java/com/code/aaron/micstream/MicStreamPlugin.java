@@ -113,6 +113,13 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                         byte[] data = new byte[BUFFER_SIZE];
                         recorder.read(data, 0, BUFFER_SIZE);
 
+                        String print = "ANDROID: [";
+                        for(int i = 0; i < 16; i++) {
+                            print += i+",";
+                        }
+                        print += "]";
+                        System.out.println(print);
+
                         // push data into stream
                         try {
                             eventSink.success(data);
