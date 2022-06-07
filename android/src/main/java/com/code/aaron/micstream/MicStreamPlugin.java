@@ -115,7 +115,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
 
                         String print = "ANDROID: [";
                         for(int i = 0; i < 16; i++) {
-                            print += i+",";
+                            print += data[i]+",";
                         }
                         print += "]";
                         System.out.println(print);
