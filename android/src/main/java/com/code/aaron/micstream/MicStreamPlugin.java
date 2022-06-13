@@ -65,7 +65,7 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
     private int SAMPLE_RATE = 16000;
     private int actualSampleRate;
     private int CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO;
-    private int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_8BIT;
+    private int AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT;
     private int actualBitDepth;
     private int BUFFER_SIZE = AudioRecord.getMinBufferSize(SAMPLE_RATE, CHANNEL_CONFIG, AUDIO_FORMAT);
 
@@ -112,13 +112,6 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
                         // Read audio data into new byte array
                         byte[] data = new byte[BUFFER_SIZE];
                         recorder.read(data, 0, BUFFER_SIZE);
-
-                        String print = "ANDROID: [";
-                        for(int i = 0; i < 16; i++) {
-                            print += data[i]+",";
-                        }
-                        print += "]";
-                        System.out.println(print);
 
                         // push data into stream
                         try {
