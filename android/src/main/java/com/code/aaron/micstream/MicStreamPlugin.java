@@ -39,7 +39,8 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
     /// Cleanup after connection loss to flutter
     @Override
     public void onDetachedFromEngine(FlutterPluginBinding binding) {
-        onCancel(null);
+        //this prevents the microphone stream from continueing in foreground when app is killed
+        //onCancel(null);
     }
 
     /// Deprecated way of registering plugin
@@ -96,7 +97,6 @@ public class MicStreamPlugin implements FlutterPlugin, EventChannel.StreamHandle
         @Override
         public void run() {
             isRecording = true;
-
             //lock access to recorder, so onCancel can't take it away while we are waiting for the recorder to get into the correct state
             synchronized (recorderLock) {
                 // Wait until recorder is initialised
