@@ -113,7 +113,8 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
                 
                 try audioCaptureDevice.lockForConfiguration()
 
-                try audioSession.setCategory(AVAudioSession.Category.record,mode: .measurement)
+                try audioSession.setCategory(AVAudioSession.Category.record, mode: .measurement)
+                
 
                 try audioSession.setPreferredSampleRate(Double(SAMPLE_RATE))
 
@@ -204,7 +205,7 @@ public class SwiftMicStreamPlugin: NSObject, FlutterStreamHandler, FlutterPlugin
         //print(audioSession.sampleRate)
         let data = Data(bytesNoCopy: audioBufferList.mBuffers.mData!, count: Int(audioBufferList.mBuffers.mDataByteSize), deallocator: .none)
         
-        print("Data Size: \(audioBufferList.mBuffers.mDataByteSize)")
+        //print("Data Size: \(audioBufferList.mBuffers.mDataByteSize)")
         
         self.eventSink!(FlutterStandardTypedData(bytes: data))
 
